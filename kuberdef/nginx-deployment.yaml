@@ -1,0 +1,41 @@
+# Nginx Web Server Deployment
+# This deployment serves static files and acts as reverse proxy
+# It handles both main application (port 80) and admin panel (port 8082)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coursey-nginx
+  labels:
+    app: coursey-nginx
+spec:
+  replicas: 2  # Run 2 instances for load balancing
+  selector:
+    matchLabels:
+      app: coursey-nginx
+  template:
+    metadata:
+      labels:
+        app: coursey-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: gryffin0109/courseyproject:nginx  # Your custom nginx image
+        ports:
+        - containerPort: 80    # Main application port
+          name: http
+        - containerPort: 8082  # Admin panel port
+          name: admin
+
+        # Health check to ensure nginx is serving content
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20

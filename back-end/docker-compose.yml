@@ -14,7 +14,7 @@ services:
       - db
 
   db:
-    image: mysql:8.0
+    image: gryffin0109/courseyproject:mysql
     volumes:
       - mysqldata:/var/lib/mysql
     ports:
