@@ -1,0 +1,22 @@
+name: Coursey-Deploy
+on: workflow_dispatch
+jobs:
+    sonar-scan:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v3
+              with:
+                fetch-depth: 0
+
+            - name: SonarQube Scan
+              uses: SonarSource/sonarqube-scan-action@master
+              env:
+                SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+                SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+            - name: SonarQube Quality Gate
+              uses: SonarSource/sonarqube-quality-gate-action@master
+              timeout-minutes: 5
+              env:
+                SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
