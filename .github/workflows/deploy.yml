@@ -71,31 +71,31 @@ jobs:
             aws s3 sync ./front-end/build/ s3://${{ env.S3_BUCKET_NAME }} --delete
 
     build-push-image:
-        name: 2b. Build & Push Backend (ECR)
+        name: Build & Push Backend (ECR)
         runs-on: ubuntu-latest
         needs: sonar-scan 
         outputs:
             image_tag: ${{ steps.define_tag.outputs.tag }} 
         steps:
-        - name: ⬇️ Checkout code
+        - name: Checkout code
           uses: actions/checkout@v4
 
-        - name: 🔑 Configure AWS Credentials (Access Key)
+        - name: Configure AWS Credentials
           uses: aws-actions/configure-aws-credentials@v4
           with:
             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
             aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
             aws-region: ${{ env.AWS_REGION }}
 
-        - name: 🔐 Login to Amazon ECR
+        - name: Login to Amazon ECR
           uses: aws-actions/amazon-ecr-login@v2
           id: login-ecr
 
-        - name: 🏷️ Define Image Tag
+        - name: Define Image Tag
           id: define_tag
-          run: echo "tag=${{ github.sha_short }}" >> $GITHUB_OUTPUT
+          run: echo "tag=$(echo $GITHUB_SHA | cut -c 1-7)" >> $GITHUB_OUTPUT
  
-        - name: 🐳 Build, Tag, and Push PHP Image
+        - name: Build, Tag, and Push PHP Image
           env:
             ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
             IMAGE_NAME: ${{ env.ECR_REPOSITORY_PHP }}
@@ -104,7 +104,7 @@ jobs:
               docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f back-end/php/Dockerfile ./back-end
               docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
 
-        - name: 🐍 Build, Tag, and Push Python Image
+        - name: Build, Tag, and Push Python Image
           env:
             ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
             IMAGE_NAME: ${{ env.ECR_REPOSITORY_PYTHON }}
