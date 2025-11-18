@@ -8,6 +8,11 @@ on:
 env:
   AWS_REGION: us-east-1 
   S3_BUCKET_NAME: coursey-project 
+  ECR_REPOSITORY_PHP: coursey/php
+  ECR_REPOSITORY_PYTHON: coursey/python
+  ECR_REPOSITORY_NGINX: coursey/nginx
+  ECR_REPOSITORY_MYSQL: coursey/mysql
+
 
 jobs:
     sonar-scan:
@@ -64,3 +69,63 @@ jobs:
         - name: Sync build to S3
           run: |
             aws s3 sync ./front-end/build/ s3://${{ env.S3_BUCKET_NAME }} --delete
+
+    build-push-image:
+        name: 2b. Build & Push Backend (ECR)
+        runs-on: ubuntu-latest
+        needs: sonar-scan 
+        outputs:
+            image_tag: ${{ steps.define_tag.outputs.tag }} 
+        steps:
+        - name: ⬇️ Checkout code
+          uses: actions/checkout@v4
+
+        - name: 🔑 Configure AWS Credentials (Access Key)
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ env.AWS_REGION }}
+
+        - name: 🔐 Login to Amazon ECR
+          uses: aws-actions/amazon-ecr-login@v2
+          id: login-ecr
+
+        - name: 🏷️ Define Image Tag
+          id: define_tag
+          run: echo "tag=${{ github.sha_short }}" >> $GITHUB_OUTPUT
+ 
+        - name: 🐳 Build, Tag, and Push PHP Image
+          env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            IMAGE_NAME: ${{ env.ECR_REPOSITORY_PHP }}
+            IMAGE_TAG: ${{ steps.define_tag.outputs.tag }}
+          run: |
+              docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f back-end/php/Dockerfile ./back-end
+              docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+        - name: 🐍 Build, Tag, and Push Python Image
+          env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            IMAGE_NAME: ${{ env.ECR_REPOSITORY_PYTHON }}
+            IMAGE_TAG: ${{ steps.define_tag.outputs.tag }}
+          run: |
+              docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f back-end/python/Dockerfile ./back-end/python
+              docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+        - name: Build, Tag, and Push Nginx Image
+          env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            IMAGE_NAME: ${{ env.ECR_REPOSITORY_NGINX }}
+            IMAGE_TAG: ${{ steps.define_tag.outputs.tag }}
+          run: |
+              docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f back-end/nginx/Dockerfile ./back-end
+              docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+        
+        - name: Build, Tag, and Push MySQL Image
+          env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            IMAGE_NAME: ${{ env.ECR_REPOSITORY_MYSQL }}
+            IMAGE_TAG: ${{ steps.define_tag.outputs.tag }}
+          run: |
+              docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -f back-end/mysql/Dockerfile ./back-end/mysql
+              docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
